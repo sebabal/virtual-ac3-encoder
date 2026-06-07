@@ -3,10 +3,11 @@
 Guidance for AI agents (and humans) working in this repo.
 
 ## What this is
-A Windows 10/11 software **"Dolby Digital Live"**: a virtual 5.1 audio device that accepts any
-multichannel PCM stream, encodes it to **AC3 (Dolby Digital)** in real time, wraps it as an
-**IEC 61937 / S-PDIF** bitstream, and streams it out a chosen **Toslink (optical)** output to an
-AV receiver. (Optical carries stereo PCM *or* a compressed 5.1 bitstream — never 5.1 PCM — so
+A Windows 10/11 software **"Dolby Digital Live"** (a free **DTS Connect** / **SoundPusher-for-
+Windows** alternative): a virtual 5.1 audio device that accepts any multichannel PCM stream,
+encodes it to **AC3 (Dolby Digital)** in real time, wraps it as an **IEC 61937 / S-PDIF**
+bitstream, and streams it out a chosen **Toslink (optical)** output to an AV receiver — i.e. real
+5.1 surround over a single optical cable when your sound card can't do DDL/DTS Connect itself. (Optical carries stereo PCM *or* a compressed 5.1 bitstream — never 5.1 PCM — so
 surround must be encoded before it leaves the port.)
 
 Two components, because the encoder is FFmpeg and **cannot run in kernel mode**:

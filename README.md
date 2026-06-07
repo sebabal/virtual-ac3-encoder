@@ -7,6 +7,20 @@ device that accepts any multichannel PCM stream, encodes it to **AC3 (Dolby Digi
 time, and streams it as an **IEC 61937 / S-PDIF** bitstream out a chosen **Toslink optical**
 output to an AV receiver.
 
+> **Also known as / what problem this solves:** a free, open-source software **Dolby Digital Live
+> (DDL)** and **DTS Connect** alternative for Windows — for PCs whose sound card can't encode
+> surround to optical, so you can get true **5.1 surround over a single Toslink / S-PDIF (optical)
+> cable** to an AV receiver or soundbar. Essentially **SoundPusher for Windows**. Useful when
+> "Dolby Digital Live" / "DTS Interactive" / "DTS Connect" isn't available on your motherboard or
+> USB sound card (Realtek, ASUS Xonar, etc.).
+>
+> _Currently encodes **AC3 (Dolby Digital, 5.1, 640 kbps)**. DTS Connect-style **DTS** output is a
+> feasible extension — FFmpeg ships a DTS encoder; see the design notes in `CLAUDE.md`._
+
+**Keywords:** Dolby Digital Live, DTS Connect, DTS Interactive, software AC3 encoder, real-time
+AC3/AC-3 encoder, 5.1 surround over optical/SPDIF/Toslink, IEC 61937 passthrough, WASAPI exclusive
+passthrough, virtual audio device/cable, FFmpeg AC3, SoundPusher for Windows, HTPC surround sound.
+
 Optical (S-PDIF) can carry stereo PCM *or* a compressed 5.1 bitstream, never 5.1 PCM — so a
 surround stream has to be encoded to AC3 on the PC before it leaves the optical port. Many
 onboard sound chips don't offer this; this project does it in software.
