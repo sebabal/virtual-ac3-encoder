@@ -1,0 +1,15 @@
+# Keep the UTF-16LE driver INF template and icons byte-exact (no EOL conversion).
+*.inx   -text
+*.ico   binary
+*.cat   binary
+*.sys   binary
+
+# Normalize text sources to LF in the repo.
+*.c     text eol=lf
+*.cpp   text eol=lf
+*.h     text eol=lf
+*.hpp   text eol=lf
+*.txt   text eol=lf
+*.md    text eol=lf
+*.cmake text eol=lf
+*.ps1   text eol=lf

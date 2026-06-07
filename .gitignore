@@ -1,0 +1,35 @@
+# Build output
+engine/build/
+driver/build/
+**/build/
+*.obj
+*.exe
+*.lib
+*.dll
+*.pdb
+*.ilk
+*.exp
+
+# WDK / MSBuild driver build outputs (intermediates + signed package land in x64/ dirs)
+**/x64/
+**/arm64/
+**/ARM64/
+**/Win32/
+*.sys
+*.cat
+
+# All third-party / fetched / external content is kept out of the repo:
+#   third_party/ffmpeg     - FFmpeg dev libs (re-fetch: scripts/fetch-ffmpeg.ps1)
+#   third_party/reference  - reference clones (SoundPusher, Windows-driver-samples, ...)
+#   third_party/vbcable    - VB-Audio VB-CABLE installer (proprietary; download separately)
+third_party/
+
+# Test artifacts
+engine/test/*.wav
+engine/test/*.spdif
+engine/test/*.ac3
+
+# Editor/OS
+.vs/
+*.user
+.DS_Store
