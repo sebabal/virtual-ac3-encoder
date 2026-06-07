@@ -33,6 +33,11 @@ engine/test/*.wav
 engine/test/*.spdif
 engine/test/*.ac3
 
+# Release staging / artifacts
+dist/
+installer/Output/
+*.zip
+
 # Editor/OS
 .vs/
 *.user

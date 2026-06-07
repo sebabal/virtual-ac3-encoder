@@ -84,6 +84,12 @@ target_link_libraries(engine PRIVATE ac3core ffmpeg ole32 avrt)
 if(MSVC)
   target_compile_options(engine PRIVATE /permissive-)
 endif()
+# Version string (override from CI: -DVAC3_VERSION=0.1.0). Use a generated header so the
+# quoting survives the VS generator (embedded-quote compile defs don't).
+set(VAC3_VERSION "0.0.0-dev" CACHE STRING "Engine version string")
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/Version.h.in"
+               "${CMAKE_CURRENT_BINARY_DIR}/generated/Version.h" @ONLY)
+target_include_directories(engine PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
 stage_ffmpeg_dlls(engine)
 
 # ---------------------------------------------------------------------------

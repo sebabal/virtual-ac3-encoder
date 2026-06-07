@@ -21,6 +21,18 @@ output to an AV receiver.
 AC3/AC-3 encoder, 5.1 surround over optical/SPDIF/Toslink, IEC 61937 passthrough, WASAPI exclusive
 passthrough, virtual audio device/cable, FFmpeg AC3, SoundPusher for Windows, HTPC surround sound.
 
+## Download / install
+
+Get the latest **[Release](https://github.com/strepto42/virtual-ac3-encoder/releases/latest)**:
+- **`virtual-ac3-encoder-setup-x.y.z.exe`** — per-user installer (no admin); auto-starts hidden at
+  logon, with Start-Menu shortcuts for config / log / device list.
+- **`virtual-ac3-encoder-x.y.z-win64.zip`** — portable build; extract and run `engine.exe`
+  (see `QUICKSTART.txt`).
+
+You also need a virtual audio cable to capture surround audio — install
+**[VB-CABLE](https://vb-audio.com/Cable/)** and set *CABLE Input* as your default 5.1 device — then
+connect the optical output to your receiver. Prefer to build from source? See **Build** below.
+
 Optical (S-PDIF) can carry stereo PCM *or* a compressed 5.1 bitstream, never 5.1 PCM — so a
 surround stream has to be encoded to AC3 on the PC before it leaves the optical port. Many
 onboard sound chips don't offer this; this project does it in software.
