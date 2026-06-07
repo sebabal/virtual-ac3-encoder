@@ -23,6 +23,9 @@ driver/build/
 #   third_party/reference  - reference clones (SoundPusher, Windows-driver-samples, ...)
 #   third_party/vbcable    - VB-Audio VB-CABLE installer (proprietary; download separately)
 third_party/
+# ...except the vendored doctest single-header (MIT) — needed to build the unit tests.
+!third_party/doctest/
+!third_party/doctest/doctest.h
 
 # Test artifacts
 engine/test/*.wav

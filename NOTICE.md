@@ -23,6 +23,11 @@ The engine dynamically links **FFmpeg** libraries (`libavcodec`, `libavformat`, 
 `scripts/fetch-ffmpeg.ps1` downloads a prebuilt shared (LGPL) build. See
 <https://ffmpeg.org> and <https://www.ffmpeg.org/legal.html>.
 
+## doctest (vendored)
+`third_party/doctest/doctest.h` is the **doctest** single-header test framework by Viktor Kirilov
+(<https://github.com/doctest/doctest>), **MIT License**. It is vendored (committed) so the unit
+tests build without a separate fetch.
+
 ## VB-CABLE (optional runtime, not included)
 On systems with Secure Boot enabled (where the bundled test-signed driver cannot load),
 **VB-CABLE** by VB-Audio Software (<https://vb-audio.com/Cable/>) can be used as the virtual
