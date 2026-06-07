@@ -35,15 +35,5 @@ jobs:
 
       - name: Unit tests (ctest)
         run: ctest --test-dir engine/build -C Release --output-on-failure
-
-      - name: Offline encoder smoke test (WAV -> AC3/IEC61937)
-        shell: pwsh
-        run: |
-          choco install ffmpeg -y --no-progress | Out-Null
-          $env:Path += ';C:\ProgramData\chocolatey\bin'
-          ./scripts/make-test-wav.ps1
-          ./engine/build/Release/encode_wav.exe ./engine/test/test_5p1.wav ./out.spdif
-          # Confirm the output really is AC3 inside IEC 61937.
-          $probe = ffprobe -hide_banner -f spdif ./out.spdif 2>&1 | Out-String
-          Write-Host $probe
-          if ($probe -notmatch 'ac3') { throw "Output did not demux as AC3" }
+        # The doctest suite already encodes PCM -> AC3 and checks the IEC 61937 burst,
+        # so the engine/encoder path is covered without needing a system ffmpeg here.

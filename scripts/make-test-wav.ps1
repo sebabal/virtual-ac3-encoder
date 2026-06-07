@@ -16,14 +16,18 @@ $ErrorActionPreference = 'Stop'
 $Out = [System.IO.Path]::GetFullPath($Out)
 New-Item -ItemType Directory -Force -Path (Split-Path $Out) | Out-Null
 
+# Build a single -filter_complex with one lavfi sine source per channel, then join to 5.1.
+# (One arg, no per-input splatting — that mangles the filter string across shells.)
 $freqs = 200,300,400,60,600,700
-$inputs = @()
-foreach ($fr in $freqs) {
-  $inputs += @('-f','lavfi','-i', "sine=frequency=$fr:duration=$Duration:sample_rate=48000")
+$parts  = @()
+$labels = ''
+for ($i = 0; $i -lt $freqs.Count; $i++) {
+  $parts  += "sine=frequency=$($freqs[$i]):duration=$($Duration):sample_rate=48000[a$i]"
+  $labels += "[a$i]"
 }
-$fc = '[0:a][1:a][2:a][3:a][4:a][5:a]join=inputs=6:channel_layout=5.1[a]'
+$fc = ($parts -join ';') + ";${labels}join=inputs=$($freqs.Count):channel_layout=5.1[a]"
 
-& ffmpeg -y @inputs -filter_complex $fc -map '[a]' -c:a pcm_s16le $Out
+& ffmpeg -y -filter_complex $fc -map '[a]' -c:a pcm_s16le $Out
 if ($LASTEXITCODE -ne 0) { throw "ffmpeg failed ($LASTEXITCODE)" }
 Write-Host "Wrote $Out"
 & ffprobe -hide_banner $Out
