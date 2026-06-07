@@ -1,5 +1,7 @@
 # virtual-ac3-encoder
 
+[![CI](https://github.com/strepto42/virtual-ac3-encoder/actions/workflows/ci.yml/badge.svg)](https://github.com/strepto42/virtual-ac3-encoder/actions/workflows/ci.yml)
+
 A Windows 10/11 software implementation of **"Dolby Digital Live"**: a virtual 5.1 audio
 device that accepts any multichannel PCM stream, encodes it to **AC3 (Dolby Digital)** in real
 time, and streams it as an **IEC 61937 / S-PDIF** bitstream out a chosen **Toslink optical**
@@ -50,6 +52,11 @@ the same engine Kodi uses internally. See `third_party/reference/` for the clone
   (used with the virtual driver).
 - `--in <name>` / `--in-id <id>` / `--out <name>` / `--out-id <id>` / `--out-spdif`
 - `--bitrate <bps>` (default 640000) / `--safe <frames>` (drift target, default 1536)
+- `--config <path>` (defaults to `virtual-ac3-encoder.conf` next to the exe) ·
+  `--hidden` (hide console) · `--log <path>` (log to file) · `--duration <s>` (auto-stop)
+
+Config precedence: built-in defaults < config file (`key=value`: `in`, `out`, `in_id`, `out_id`,
+`bitrate`, `safe`, `loopback`, `out_spdif`) < command-line flags.
 
 ## Driver (Phase 3)
 
@@ -85,6 +92,23 @@ engine\build\Release\engine.exe --in "CABLE Output" --out "Realtek Digital Outpu
 
 Set the virtual device as the Windows default 5.1 output, play surround content, and switch the
 receiver to the matching optical input — it should report Dolby Digital.
+
+## Set and forget (autostart)
+
+Install the engine to a stable per-user location and have it start hidden at every logon, with
+restart-on-failure (no elevation, no Task Scheduler — a Startup-folder supervisor that runs in the
+real interactive session):
+
+```powershell
+scripts\setup-autostart.ps1                                   # VB-CABLE -> Realtek (defaults)
+scripts\setup-autostart.ps1 -In "CABLE Output" -Out "Realtek Digital Output" -Bitrate 640000
+scripts\setup-autostart.ps1 -In "Virtual AC3 Encoder" -Loopback   # when using our own driver
+scripts\remove-autostart.ps1 [-DeleteInstall]                 # undo
+```
+
+This stages `engine.exe` + DLLs to `%LOCALAPPDATA%\virtual-ac3-encoder`, writes
+`virtual-ac3-encoder.conf` there (edit it to change devices/bitrate), and drops a supervisor in the
+Startup folder that runs `engine --hidden --log` and relaunches it if it exits.
 
 ## Build (engine)
 

@@ -18,6 +18,9 @@
 #include <atomic>
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
+#include <fstream>
+#include <string>
 #include <thread>
 
 static std::atomic_bool g_stop{false};
@@ -32,14 +35,60 @@ static BOOL WINAPI CtrlHandler(DWORD type)
   return FALSE;
 }
 
-static Config ParseArgs(int argc, char** argv)
+static std::string ExeDir()
 {
-  Config c;
+  char buf[MAX_PATH] = {0};
+  DWORD n = GetModuleFileNameA(nullptr, buf, MAX_PATH);
+  std::string p(buf, n);
+  size_t slash = p.find_last_of("\\/");
+  return slash == std::string::npos ? std::string(".") : p.substr(0, slash);
+}
+
+static std::string Trim(const std::string& s)
+{
+  size_t a = s.find_first_not_of(" \t\r\n");
+  size_t b = s.find_last_not_of(" \t\r\n");
+  return a == std::string::npos ? std::string() : s.substr(a, b - a + 1);
+}
+
+// Load a `key=value` config file (# or ; comments). CLI args override these.
+// Keys: in, in_id, out, out_id, bitrate, safe, loopback, out_spdif.
+static void LoadConfigFile(const std::string& path, Config& c)
+{
+  std::ifstream f(path);
+  if (!f) return;
+  std::string line;
+  while (std::getline(f, line))
+  {
+    std::string s = Trim(line);
+    if (s.empty() || s[0] == '#' || s[0] == ';') continue;
+    size_t eq = s.find('=');
+    if (eq == std::string::npos) continue;
+    std::string k = Trim(s.substr(0, eq));
+    std::string v = Trim(s.substr(eq + 1));
+    auto truthy = [](const std::string& x) { return x == "1" || x == "true" || x == "yes"; };
+    if      (k == "in")        c.inName = Widen(v.c_str());
+    else if (k == "in_id")     c.inId = Widen(v.c_str());
+    else if (k == "out")       c.outName = Widen(v.c_str());
+    else if (k == "out_id")    c.outId = Widen(v.c_str());
+    else if (k == "bitrate")   c.bitRate = std::strtoll(v.c_str(), nullptr, 10);
+    else if (k == "safe")      c.safeFrames = (uint32_t)std::strtoul(v.c_str(), nullptr, 10);
+    else if (k == "loopback")  c.loopback = truthy(v);
+    else if (k == "out_spdif") c.outAutoSpdif = truthy(v);
+  }
+  std::printf("Loaded config: %s\n", path.c_str());
+}
+
+static void ParseArgs(int argc, char** argv, Config& c)
+{
   for (int i = 1; i < argc; ++i)
   {
     std::string a = argv[i];
     auto next = [&]() -> std::wstring { return (i + 1 < argc) ? Widen(argv[++i]) : std::wstring(); };
-    if (a == "--list")            c.listDevices = true;
+    if (a == "--config")          { if (i + 1 < argc) ++i; } // handled before ParseArgs
+    else if (a == "--hidden")     {}                          // handled in the pre-scan above
+    else if (a == "--log")        { if (i + 1 < argc) ++i; }  // handled in the pre-scan above
+    else if (a == "--list")       c.listDevices = true;
     else if (a == "--probe")      c.probe = true;
     else if (a == "--loopback")   c.loopback = true;
     else if (a == "--mon")        c.monitor = true;
@@ -53,7 +102,6 @@ static Config ParseArgs(int argc, char** argv)
     else if (a == "--safe" && i + 1 < argc)    c.safeFrames = (uint32_t)std::strtoul(argv[++i], nullptr, 10);
     else std::fprintf(stderr, "ignoring unknown arg: %s\n", a.c_str());
   }
-  return c;
 }
 
 static bool ResolveCapture(const Config& c, ComPtr<IMMDevice>& dev, EndpointInfo& info)
@@ -131,12 +179,37 @@ static int RunMonitor(const Config& c, IMMDevice* inDev)
 
 int main(int argc, char** argv)
 {
+  // Pre-scan for --log / --hidden so they apply before any output or device work. These let
+  // the engine run as a Scheduled Task directly (no wscript/cmd wrapper): it hides its own
+  // console and writes its log to a file.
+  for (int i = 1; i < argc; ++i)
+  {
+    std::string a = argv[i];
+    if (a == "--hidden")
+    {
+      HWND con = GetConsoleWindow();
+      if (con) ShowWindow(con, SW_HIDE);
+    }
+    else if (a == "--log" && i + 1 < argc)
+    {
+      FILE* fp = std::freopen(argv[i + 1], "a", stdout);
+      (void)fp;
+      std::freopen(argv[i + 1], "a", stderr);
+    }
+  }
   setvbuf(stdout, nullptr, _IONBF, 0); // unbuffered so logs aren't lost on abnormal exit
 
   ComApartment com;
   if (!com.ok()) { std::fprintf(stderr, "CoInitializeEx failed\n"); return 1; }
 
-  Config cfg = ParseArgs(argc, argv);
+  // Config precedence: defaults < config file < command line.
+  // Default config path is next to the exe; override with --config <path>.
+  Config cfg;
+  std::string cfgPath = ExeDir() + "\\virtual-ac3-encoder.conf";
+  for (int i = 1; i + 1 < argc; ++i)
+    if (std::string(argv[i]) == "--config") cfgPath = argv[i + 1];
+  LoadConfigFile(cfgPath, cfg);
+  ParseArgs(argc, argv, cfg);
 
   if (cfg.listDevices)
   {
