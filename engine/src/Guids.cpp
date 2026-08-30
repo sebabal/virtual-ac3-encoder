@@ -17,3 +17,4 @@
 #include <functiondiscoverykeys_devpkey.h>  // PKEY_Device_FriendlyName, PKEY_AudioEndpoint_FormFactor, ...
 #include <ks.h>
 #include <ksmedia.h>                        // KSDATAFORMAT_SUBTYPE_IEC61937_DOLBY_DIGITAL, KSDATAFORMAT_SUBTYPE_PCM
+#include <endpointvolume.h>                 // IID_IAudioEndpointVolume (last: it pulls ksmedia.h in early)

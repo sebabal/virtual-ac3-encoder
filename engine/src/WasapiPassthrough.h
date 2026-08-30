@@ -9,6 +9,8 @@
 #pragma once
 
 #include "ComUtil.h"
+#include "VolumeFollower.h"
+#include "Gain.h"
 #include "RingBuffer.h"
 #include "SpdifEncoder.h"
 #include "WasapiCapture.h" // CaptureFormat
@@ -28,6 +30,9 @@ public:
     int64_t  bitRate = 640000;
     uint32_t safeFrames = 1536;    // target excess frames kept buffered (latency vs. safety)
     bool     upmixSurround = false; // stereo->5.1 via the `surround` filter (else swr default)
+    // Optional: follow this endpoint's volume/mute and apply it to the PCM before encoding.
+    // Null = unity gain. See VolumeFollower.h for why the OS can't do this for us.
+    VolumeFollower* volume = nullptr;
   };
 
   WasapiPassthrough() = default;
@@ -74,6 +79,9 @@ private:
   // drift tracking (consumer thread only)
   uint32_t cycle_ = 0;
   uint32_t minAvail_ = 0xFFFFFFFFu;
+
+  PcmSampleFormat gainFmt_ = PcmSampleFormat::Unknown; // capture format, for the gain stage
+  float           lastGain_ = 1.0f;                    // ramp start for the next packet
 
   std::vector<uint8_t> staging_; // one packet of capture frames
   std::vector<uint8_t> silence_; // same, zeroed

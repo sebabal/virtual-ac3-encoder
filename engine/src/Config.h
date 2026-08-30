@@ -25,6 +25,12 @@ struct Config
   int64_t  bitRate = 640000;
   uint32_t safeFrames = 1536;
 
+  // Follow the input endpoint's Windows volume/mute and apply it to the PCM before
+  // encoding: "follow" (default) or "off". Needed because a loopback capture is tapped
+  // before the endpoint volume node and an exclusive-mode bitstream bypasses it entirely,
+  // so without this the Windows slider for the virtual cable does nothing at all.
+  std::string volume = "follow";
+
   // Stereo->5.1 upmix mode for <=2ch input: "off" (swr default) or "surround"
   // (FFmpeg `surround` FFT upmix). Multichannel input is always downmixed to 5.1.
   // Default "surround": this tool targets a 5.1 optical path, so stereo sources use all speakers.

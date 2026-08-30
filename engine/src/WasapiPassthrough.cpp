@@ -49,6 +49,19 @@ void FillAc3Format(WAVEFORMATEXTENSIBLE_IEC61937& w, int rate, bool extended)
   }
 }
 
+// Same format, as the gain stage understands it (Gain.h is Windows/FFmpeg-free, so the gain
+// maths can be unit-tested on its own).
+PcmSampleFormat MapGainFmt(AVSampleFormat f)
+{
+  switch (f)
+  {
+  case AV_SAMPLE_FMT_FLT: return PcmSampleFormat::F32;
+  case AV_SAMPLE_FMT_S16: return PcmSampleFormat::S16;
+  case AV_SAMPLE_FMT_S32: return PcmSampleFormat::S32;
+  default:                return PcmSampleFormat::Unknown;
+  }
+}
+
 } // namespace
 
 WasapiPassthrough::~WasapiPassthrough()
@@ -95,6 +108,8 @@ bool WasapiPassthrough::Init(IMMDevice* dev, RingBuffer* ring, const CaptureForm
                  capFmt.bits, capFmt.isFloat ? "float" : "int");
     return false;
   }
+
+  gainFmt_ = MapGainFmt(inFmt);
 
   // Configure the encoder. Input = the capture layout; downmixed to 5.1 internally.
   SpdifEncoder::Params ep;
@@ -227,11 +242,23 @@ void WasapiPassthrough::EncodeIntoBuffer(BYTE* out)
     if (ring_->BytesAvailable() >= pktBytes)
     {
       ring_->Read(staging_.data(), pktBytes);
+      if (params_.volume)
+      {
+        // Windows' volume/mute for the input device, applied here because neither the
+        // loopback tap nor the exclusive-mode bitstream honours it. Ramped from the previous
+        // packet's gain so slider moves fade instead of clicking.
+        const float g = params_.volume->Gain();
+        ApplyGainRamp(staging_.data(), static_cast<size_t>(framesPerPacket_), capFmt_.channels,
+                      gainFmt_, lastGain_, g);
+        lastGain_ = g;
+      }
       in = staging_.data();
     }
     else
     {
       in = silence_.data(); // underrun: emit AC3 silence, leave the ring to refill
+      if (params_.volume)
+        lastGain_ = params_.volume->Gain(); // nothing to fade; resume from wherever it is now
     }
 
     int n = enc_.EncodePacket(in, burst_.data(), static_cast<int>(burst_.size()));

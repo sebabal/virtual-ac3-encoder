@@ -11,6 +11,7 @@
 #include "ComUtil.h"
 #include "Config.h"
 #include "DeviceEnum.h"
+#include "VolumeFollower.h"
 #include "RingBuffer.h"
 #include "WasapiCapture.h"
 #include "WasapiPassthrough.h"
@@ -57,7 +58,7 @@ static std::string Trim(const std::string& s)
 }
 
 // Load a `key=value` config file (# or ; comments). CLI args override these.
-// Keys: in, in_id, out, out_id, bitrate, safe, loopback, out_spdif.
+// Keys: in, in_id, out, out_id, bitrate, safe, loopback, out_spdif, upmix, volume.
 static void LoadConfigFile(const std::string& path, Config& c)
 {
   std::ifstream f(path);
@@ -81,6 +82,7 @@ static void LoadConfigFile(const std::string& path, Config& c)
     else if (k == "loopback")  c.loopback = truthy(v);
     else if (k == "out_spdif") c.outAutoSpdif = truthy(v);
     else if (k == "upmix")     c.upmix = v;
+    else if (k == "volume")    c.volume = v;
   }
   std::printf("Loaded config: %s\n", path.c_str());
 }
@@ -108,6 +110,7 @@ static void ParseArgs(int argc, char** argv, Config& c)
     else if (a == "--bitrate" && i + 1 < argc) c.bitRate = std::strtoll(argv[++i], nullptr, 10);
     else if (a == "--safe" && i + 1 < argc)    c.safeFrames = (uint32_t)std::strtoul(argv[++i], nullptr, 10);
     else if (a == "--upmix" && i + 1 < argc)   c.upmix = argv[++i];
+    else if (a == "--volume" && i + 1 < argc)  c.volume = argv[++i];
     else std::fprintf(stderr, "ignoring unknown arg: %s\n", a.c_str());
   }
 }
@@ -268,6 +271,14 @@ int main(int argc, char** argv)
   if (!ResolveOutput(cfg, outDev, outInfo)) return 1;
   std::printf("Output  : %s %s\n", Narrow(outInfo.name.c_str()).c_str(), outInfo.isSpdif ? "[SPDIF]" : "");
 
+  // Follow the input device's volume/mute (see VolumeFollower.h). Declared before the
+  // passthrough so it outlives the render thread that reads it.
+  VolumeFollower volume;
+  const bool followVolume = (cfg.volume != "off" && cfg.volume != "0");
+  const bool haveVolume = followVolume && volume.Init(inDev.Get());
+  if (!followVolume)
+    std::printf("Volume  : not following the input device (volume=off)\n");
+
   WasapiCapture capture;
   if (!capture.Init(inDev.Get(), cfg.loopback)) return 1;
 
@@ -281,6 +292,7 @@ int main(int argc, char** argv)
   pp.bitRate = cfg.bitRate;
   pp.safeFrames = cfg.safeFrames;
   pp.upmixSurround = (cfg.upmix == "surround");
+  pp.volume = haveVolume ? &volume : nullptr;
 
   WasapiPassthrough out;
   if (!out.Init(outDev.Get(), &ring, cf, pp)) return 1;
@@ -305,5 +317,6 @@ int main(int argc, char** argv)
   std::printf("\nStopping...\n");
   capture.Stop();
   out.Stop();
+  volume.Stop();
   return 0;
 }
