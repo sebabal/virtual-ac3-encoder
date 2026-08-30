@@ -1,24 +1,24 @@
-// EndpointVolume.cpp — see EndpointVolume.h.
-#include "EndpointVolume.h"
+// VolumeFollower.cpp — see VolumeFollower.h.
+#include "VolumeFollower.h"
 
 #include "Gain.h"
 
 #include <cmath>
 
-EndpointVolume::~EndpointVolume()
+VolumeFollower::~VolumeFollower()
 {
   Stop();
   if (stopEvent_) CloseHandle(stopEvent_);
 }
 
-bool EndpointVolume::Init(IMMDevice* dev)
+bool VolumeFollower::Init(IMMDevice* dev)
 {
   if (!dev) return false;
 
   HRESULT hr = dev->Activate(__uuidof(IAudioEndpointVolume), CLSCTX_ALL, nullptr, &vol_);
   if (FAILED(hr))
   {
-    std::fprintf(stderr, "[EndpointVolume] endpoint has no volume control (%s); "
+    std::fprintf(stderr, "[VolumeFollower] endpoint has no volume control (%s); "
                          "running at unity gain\n", HrStr(hr).c_str());
     return false;
   }
@@ -29,14 +29,14 @@ bool EndpointVolume::Init(IMMDevice* dev)
   stopEvent_ = CreateEventW(nullptr, TRUE, FALSE, nullptr); // manual-reset
   if (!stopEvent_) return false;
   running_.store(true);
-  thread_ = std::thread(&EndpointVolume::ThreadProc, this);
+  thread_ = std::thread(&VolumeFollower::ThreadProc, this);
 
-  std::printf("[EndpointVolume] following the input device's volume/mute (currently %.0f%%)\n",
+  std::printf("[VolumeFollower] following the input device's volume/mute (currently %.0f%%)\n",
               g * 100.0f);
   return true;
 }
 
-void EndpointVolume::Stop()
+void VolumeFollower::Stop()
 {
   if (!running_.exchange(false))
     return;
@@ -47,7 +47,7 @@ void EndpointVolume::Stop()
 // Master volume as a linear amplitude. GetMasterVolumeLevel returns the dB attenuation the
 // endpoint's volume node is set to, so 10^(dB/20) reproduces Windows' own taper exactly;
 // the scalar is only a fallback for devices that don't report a dB range.
-float EndpointVolume::ReadGain()
+float VolumeFollower::ReadGain()
 {
   if (!vol_)
     return 1.0f;
@@ -67,7 +67,7 @@ float EndpointVolume::ReadGain()
   return 1.0f;
 }
 
-void EndpointVolume::ThreadProc()
+void VolumeFollower::ThreadProc()
 {
   // This thread makes its own COM calls, so it needs an apartment of its own (MTA, matching
   // the process apartment, so the calls stay direct).

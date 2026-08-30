@@ -1,4 +1,4 @@
-// EndpointVolume.h
+// VolumeFollower.h
 //
 // Tracks a WASAPI endpoint's master volume + mute (the Windows volume slider / OSD / media
 // keys for that device) and publishes it as a linear amplitude gain the encode path can
@@ -28,13 +28,13 @@
 #include <atomic>
 #include <thread>
 
-class EndpointVolume
+class VolumeFollower
 {
 public:
-  EndpointVolume() = default;
-  ~EndpointVolume();
-  EndpointVolume(const EndpointVolume&) = delete;
-  EndpointVolume& operator=(const EndpointVolume&) = delete;
+  VolumeFollower() = default;
+  ~VolumeFollower();
+  VolumeFollower(const VolumeFollower&) = delete;
+  VolumeFollower& operator=(const VolumeFollower&) = delete;
 
   // Starts following `dev`'s master volume. Returns false if the endpoint exposes no volume
   // control (Gain() then stays at 1.0, i.e. the engine behaves as before).

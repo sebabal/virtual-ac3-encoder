@@ -87,7 +87,7 @@ precedence: defaults < config file (`virtual-ac3-encoder.conf` next to the exe; 
 **Volume:** Windows' slider/mute for the virtual cable cannot reach the receiver on its own —
 a **loopback capture is tapped before the endpoint volume/mute node** (only per-app session
 volumes are baked into it), and the **exclusive-mode IEC 61937 bitstream bypasses the audio
-engine** (and can't be scaled while compressed). `EndpointVolume` therefore polls the *input*
+engine** (and can't be scaled while compressed). `VolumeFollower` therefore polls the *input*
 endpoint's `GetMasterVolumeLevel`/`GetMute` (50 ms, own thread + own MTA apartment; polled
 rather than `IAudioEndpointVolumeCallback` to keep COM calls off the callback and RT threads),
 and `WasapiPassthrough` applies it via `Gain.h`'s `ApplyGainRamp` to each 1536-frame packet

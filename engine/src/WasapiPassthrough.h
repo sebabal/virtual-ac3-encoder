@@ -9,7 +9,7 @@
 #pragma once
 
 #include "ComUtil.h"
-#include "EndpointVolume.h"
+#include "VolumeFollower.h"
 #include "Gain.h"
 #include "RingBuffer.h"
 #include "SpdifEncoder.h"
@@ -31,8 +31,8 @@ public:
     uint32_t safeFrames = 1536;    // target excess frames kept buffered (latency vs. safety)
     bool     upmixSurround = false; // stereo->5.1 via the `surround` filter (else swr default)
     // Optional: follow this endpoint's volume/mute and apply it to the PCM before encoding.
-    // Null = unity gain. See EndpointVolume.h for why the OS can't do this for us.
-    EndpointVolume* volume = nullptr;
+    // Null = unity gain. See VolumeFollower.h for why the OS can't do this for us.
+    VolumeFollower* volume = nullptr;
   };
 
   WasapiPassthrough() = default;

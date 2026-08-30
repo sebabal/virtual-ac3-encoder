@@ -76,8 +76,8 @@ add_executable(engine
   src/Guids.cpp
   src/DeviceEnum.cpp
   src/DeviceEnum.h
-  src/EndpointVolume.cpp
-  src/EndpointVolume.h
+  src/VolumeFollower.cpp
+  src/VolumeFollower.h
   src/WasapiCapture.cpp
   src/WasapiCapture.h
   src/WasapiPassthrough.cpp

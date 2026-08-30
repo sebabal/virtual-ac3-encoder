@@ -8,7 +8,7 @@
 // *loopback*, which taps the mix before the endpoint's volume/mute node, and it writes an
 // IEC 61937 bitstream in exclusive mode, which bypasses every Windows volume control (and
 // couldn't be scaled anyway — it's compressed). So the Windows slider only does anything if
-// we apply it here, to the PCM, before it reaches the AC3 encoder. See EndpointVolume.
+// we apply it here, to the PCM, before it reaches the AC3 encoder. See VolumeFollower.
 #pragma once
 
 #include <cmath>

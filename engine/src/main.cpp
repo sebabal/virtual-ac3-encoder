@@ -11,7 +11,7 @@
 #include "ComUtil.h"
 #include "Config.h"
 #include "DeviceEnum.h"
-#include "EndpointVolume.h"
+#include "VolumeFollower.h"
 #include "RingBuffer.h"
 #include "WasapiCapture.h"
 #include "WasapiPassthrough.h"
@@ -271,9 +271,9 @@ int main(int argc, char** argv)
   if (!ResolveOutput(cfg, outDev, outInfo)) return 1;
   std::printf("Output  : %s %s\n", Narrow(outInfo.name.c_str()).c_str(), outInfo.isSpdif ? "[SPDIF]" : "");
 
-  // Follow the input device's volume/mute (see EndpointVolume.h). Declared before the
+  // Follow the input device's volume/mute (see VolumeFollower.h). Declared before the
   // passthrough so it outlives the render thread that reads it.
-  EndpointVolume volume;
+  VolumeFollower volume;
   const bool followVolume = (cfg.volume != "off" && cfg.volume != "0");
   const bool haveVolume = followVolume && volume.Init(inDev.Get());
   if (!followVolume)
