@@ -35,6 +35,16 @@ jobs:
       - name: Build (Release)
         run: cmake --build engine/build --config Release
 
+      # So a PR build can be smoke-tested on real hardware without cutting a release.
+      - name: Upload engine build
+        uses: actions/upload-artifact@v4
+        with:
+          name: engine-${{ github.sha }}
+          path: |
+            engine/build/Release/engine.exe
+            engine/build/Release/*.dll
+          if-no-files-found: error
+
       - name: Unit tests (ctest)
         run: ctest --test-dir engine/build -C Release --output-on-failure
         # The doctest suite already encodes PCM -> AC3 and checks the IEC 61937 burst,
