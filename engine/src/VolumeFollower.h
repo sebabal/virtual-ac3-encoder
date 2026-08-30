@@ -36,7 +36,9 @@ struct IAudioEndpointVolume;
 class VolumeFollower
 {
 public:
-  VolumeFollower() = default;
+  // Out of line, both of them: with IAudioEndpointVolume incomplete here, an inline
+  // constructor would instantiate ComPtr's destructor (for unwinding) and fail.
+  VolumeFollower();
   ~VolumeFollower();
   VolumeFollower(const VolumeFollower&) = delete;
   VolumeFollower& operator=(const VolumeFollower&) = delete;

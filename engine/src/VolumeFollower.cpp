@@ -7,6 +7,8 @@
 
 #include <cmath>
 
+VolumeFollower::VolumeFollower() = default;
+
 VolumeFollower::~VolumeFollower()
 {
   Stop();
