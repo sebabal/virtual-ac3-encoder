@@ -33,6 +33,10 @@ jobs:
           if (-not $ver) {
             $latest = ""
             try { $latest = gh api "repos/$env:GITHUB_REPOSITORY/releases/latest" --jq '.tag_name' } catch {}
+            # A repo with no releases yet 404s here. try/catch doesn't reset a native exit
+            # code, and pwsh steps end with `exit $LASTEXITCODE` -- so clear it, or the very
+            # first release of a repo fails on a condition we already handle below.
+            $global:LASTEXITCODE = 0
             if ($latest -match '^v?(\d+)\.(\d+)\.(\d+)') {
               $ver = '{0}.{1}.{2}' -f $Matches[1], $Matches[2], ([int]$Matches[3] + 1)
             } else {
