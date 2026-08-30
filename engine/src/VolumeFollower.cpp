@@ -3,6 +3,8 @@
 
 #include "Gain.h"
 
+#include <endpointvolume.h> // see the note in VolumeFollower.h: kept out of the header
+
 #include <cmath>
 
 VolumeFollower::~VolumeFollower()

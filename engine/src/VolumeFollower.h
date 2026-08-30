@@ -22,8 +22,13 @@
 
 #include "ComUtil.h"
 
-#include <endpointvolume.h>
 #include <mmdeviceapi.h>
+
+// Deliberately NOT <endpointvolume.h>: it drags in ksmedia.h ahead of mmreg.h, and every
+// translation unit that then includes this header loses WAVEFORMATEXTENSIBLE_IEC61937 (the
+// AC3 passthrough format). Only VolumeFollower.cpp needs the real interface; the members
+// below just need the name.
+struct IAudioEndpointVolume;
 
 #include <atomic>
 #include <thread>

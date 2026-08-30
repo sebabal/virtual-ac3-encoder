@@ -14,7 +14,7 @@
 #include <initguid.h>                       // turns the DEFINE_GUID/DEFINE_PROPERTYKEY below into definitions
 #include <mmdeviceapi.h>                    // CLSID_MMDeviceEnumerator, IID_IMMDeviceEnumerator
 #include <audioclient.h>                    // IID_IAudioClient, IID_IAudioRenderClient, ...
-#include <endpointvolume.h>                 // IID_IAudioEndpointVolume
 #include <functiondiscoverykeys_devpkey.h>  // PKEY_Device_FriendlyName, PKEY_AudioEndpoint_FormFactor, ...
 #include <ks.h>
 #include <ksmedia.h>                        // KSDATAFORMAT_SUBTYPE_IEC61937_DOLBY_DIGITAL, KSDATAFORMAT_SUBTYPE_PCM
+#include <endpointvolume.h>                 // IID_IAudioEndpointVolume (last: it pulls ksmedia.h in early)
