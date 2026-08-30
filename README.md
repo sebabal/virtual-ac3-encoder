@@ -83,9 +83,34 @@ the same engine Kodi uses internally. See `third_party/reference/` for the clone
 - `--upmix surround|off` — for stereo input, upmix to 5.1 via FFmpeg's `surround` filter
   (a free DTS Neo:PC / Pro Logic II-style matrix upmix). **Default `surround`**; use `off` for
   untouched stereo→front. Multichannel input is downmixed regardless.
+- `--volume follow|off` — follow the input device's Windows volume/mute and apply it to the
+  PCM before encoding. **Default `follow`.** See *Volume control* below.
 
 Config precedence: built-in defaults < config file (`key=value`: `in`, `out`, `in_id`, `out_id`,
-`bitrate`, `safe`, `loopback`, `out_spdif`, `upmix`) < command-line flags.
+`bitrate`, `safe`, `loopback`, `out_spdif`, `upmix`, `volume`) < command-line flags.
+
+## Volume control
+
+Windows can't attenuate this pipeline for you, at either end:
+
+- the engine reads the virtual cable through **WASAPI loopback**, which is tapped *after* the
+  per-app volumes in the mixer but *before* the endpoint's master volume/mute — so moving the
+  cable's slider (or muting it) changes nothing in what we capture;
+- the optical side is an **IEC 61937 bitstream on an exclusive-mode client**, which bypasses the
+  Windows audio engine completely — and a compressed bitstream can't be scaled without decoding
+  it anyway.
+
+So the engine applies it itself: it follows the master volume + mute of the **input** device (the
+virtual cable — normally your default playback device, so the volume keys and the on-screen
+display just work) and scales the PCM before AC3 encoding, ramped over each 32 ms packet so
+changes fade rather than click. The attenuation is read in dB (`GetMasterVolumeLevel`), which
+reproduces Windows' own volume taper; gain is never pushed above unity. Set `volume=off` (or
+`--volume off`) to send the stream at full scale and control level only on the receiver.
+
+The slider that is followed is always the one belonging to the endpoint the engine opened: in
+`loopback` mode that is the virtual cable's *playback* device (`CABLE In`) — the one the volume
+keys move; without `loopback` it is the *recording* level of the capture endpoint
+(`CABLE Output`), because that is the device being read.
 
 ## Driver (Phase 3)
 

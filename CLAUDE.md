@@ -78,10 +78,21 @@ Install our driver: `scripts\install-driver.ps1 -EnableTestSigning` (elevated) �
 `--list` (endpoints) · `--probe` (AC3 support per output) · `--mon` (capture throughput diag) ·
 `--loopback` · `--duration N` · `--in/--out` (name substr) · `--in-id/--out-id` · `--out-spdif` ·
 `--bitrate <bps>` · `--safe <frames>` · `--config <path>` · `--hidden` (hide console) ·
-`--log <path>` · `--upmix surround|off` (stereo->5.1 via FFmpeg `surround` filter; **default
+`--log <path>` · `--volume follow|off` (apply the input device's volume/mute to the PCM;
+**default follow**) · `--upmix surround|off` (stereo->5.1 via FFmpeg `surround` filter; **default
 surround**). Config
 precedence: defaults < config file (`virtual-ac3-encoder.conf` next to the exe; keys
-`in/out/in_id/out_id/bitrate/safe/loopback/out_spdif/upmix`) < CLI.
+`in/out/in_id/out_id/bitrate/safe/loopback/out_spdif/upmix/volume`) < CLI.
+
+**Volume:** Windows' slider/mute for the virtual cable cannot reach the receiver on its own —
+a **loopback capture is tapped before the endpoint volume/mute node** (only per-app session
+volumes are baked into it), and the **exclusive-mode IEC 61937 bitstream bypasses the audio
+engine** (and can't be scaled while compressed). `EndpointVolume` therefore polls the *input*
+endpoint's `GetMasterVolumeLevel`/`GetMute` (50 ms, own thread + own MTA apartment; polled
+rather than `IAudioEndpointVolumeCallback` to keep COM calls off the callback and RT threads),
+and `WasapiPassthrough` applies it via `Gain.h`'s `ApplyGainRamp` to each 1536-frame packet
+before encoding — ramped across the packet so slider moves fade instead of clicking. dB (not
+the scalar) is used so the attenuation matches Windows' own taper; gain is clamped to <= 1.
 
 **Surround upmix:** `SpdifEncoder` runs an FFmpeg `surround` libavfilter graph (abuffer → surround →
 aformat → abuffersink) for <=2ch input when `upmix=surround`, accumulating output in an `AVAudioFifo`
