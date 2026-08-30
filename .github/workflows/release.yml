@@ -57,7 +57,8 @@ jobs:
       - name: Configure + build (Release)
         shell: pwsh
         run: |
-          cmake -S engine -B engine/build -G "Visual Studio 17 2022" -A x64 "-DVAC3_VERSION=${{ steps.ver.outputs.version }}"
+          # No -G: use the newest Visual Studio on the runner (the image is VS 2026 now).
+          cmake -S engine -B engine/build -A x64 "-DVAC3_VERSION=${{ steps.ver.outputs.version }}"
           cmake --build engine/build --config Release
 
       - name: Unit tests (ctest)
