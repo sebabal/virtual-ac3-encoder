@@ -5,12 +5,16 @@
 // shared RingBuffer, encodes it to an AC3 / IEC 61937 burst (SpdifEncoder) and writes it to
 // the device. Clock drift between the capture clock and this output clock is absorbed by the
 // ring buffer and corrected SoundPusher-style: every ~64 cycles, excess buffered frames are
-// trimmed to bound latency; underruns emit AC3 silence so the receiver stays locked.
+// trimmed to bound latency. When the ring runs dry (nothing is playing on the virtual cable,
+// so the loopback tap delivers nothing), the output emits AC3 silence — keeping the receiver
+// locked — and does not resume until the ring has refilled to the full cushion again; see
+// Prebuffer.h for why resuming any earlier crackles.
 #pragma once
 
 #include "ComUtil.h"
 #include "VolumeFollower.h"
 #include "Gain.h"
+#include "Prebuffer.h"
 #include "RingBuffer.h"
 #include "SpdifEncoder.h"
 #include "WasapiCapture.h" // CaptureFormat
@@ -79,6 +83,10 @@ private:
   // drift tracking (consumer thread only)
   uint32_t cycle_ = 0;
   uint32_t minAvail_ = 0xFFFFFFFFu;
+
+  // refill gate: emit silence until the ring holds the full cushion again (see Prebuffer.h)
+  Prebuffer gate_;
+  uint64_t  loggedUnderruns_ = 0;
 
   PcmSampleFormat gainFmt_ = PcmSampleFormat::Unknown; // capture format, for the gain stage
   float           lastGain_ = 1.0f;                    // ramp start for the next packet
