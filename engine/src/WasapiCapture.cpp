@@ -36,7 +36,12 @@ bool WasapiCapture::Init(IMMDevice* dev, bool loopback)
   // Shared mode. Loopback streams cannot be event-driven, so they are polled instead.
   // periodicity must be 0 in shared mode.
   const DWORD flags = loopback_ ? AUDCLNT_STREAMFLAGS_LOOPBACK : AUDCLNT_STREAMFLAGS_EVENTCALLBACK;
-  REFERENCE_TIME bufferHns = 200000; // 20 ms; WASAPI may enlarge as needed
+  // Ask for a generous endpoint buffer. A loopback stream can't be event-driven, so it is
+  // polled -- and if a poll lands later than the buffer is long, WASAPI has already discarded
+  // the overrun and that audio is gone for good. Every such gap is a permanent input deficit
+  // the ring can never make up, which shows up downstream as starvation and dropouts. 20 ms
+  // was far too tight on a box with several other audio stacks running.
+  REFERENCE_TIME bufferHns = 2000000; // 200 ms; WASAPI may enlarge as needed
   HRESULT hr = client_->Initialize(AUDCLNT_SHAREMODE_SHARED, flags, bufferHns, 0, mix, nullptr);
   CoTaskMemFree(mix);
   if (FAILED(hr)) { std::fprintf(stderr, "[WasapiCapture] Initialize failed: %s\n", HrStr(hr).c_str()); return false; }
@@ -50,6 +55,11 @@ bool WasapiCapture::Init(IMMDevice* dev, bool loopback)
     HR_FAIL(client_->SetEventHandle(dataEvent_), "SetEventHandle");
   }
   HR_FAIL(client_->GetService(__uuidof(IAudioCaptureClient), &capture_), "GetService(IAudioCaptureClient)");
+
+  UINT32 endpointFrames = 0;
+  if (SUCCEEDED(client_->GetBufferSize(&endpointFrames)) && fmt_.sampleRate)
+    std::printf("[WasapiCapture] endpoint buffer = %u frames (~%.0f ms)\n", endpointFrames,
+                1000.0 * endpointFrames / fmt_.sampleRate);
 
   std::printf("[WasapiCapture] %s: %u ch, %u Hz, %u-bit %s, mask=0x%X\n",
               loopback_ ? "loopback" : "capture", fmt_.channels, fmt_.sampleRate, fmt_.bits,
@@ -99,6 +109,9 @@ void WasapiCapture::ThreadProc()
         break;
 
       const size_t bytes = static_cast<size_t>(frames) * bpf;
+      if (flags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY)
+        discontinuities_.fetch_add(1, std::memory_order_relaxed); // WASAPI dropped input
+
       if (flags & AUDCLNT_BUFFERFLAGS_SILENT)
       {
         // Push silence so the timeline stays continuous.
@@ -108,10 +121,30 @@ void WasapiCapture::ThreadProc()
       }
       else if (data)
       {
-        ring_->Write(data, bytes); // overflow is dropped by the ring (consumer trims drift)
+        const size_t wrote = ring_->Write(data, bytes);
+        if (wrote < bytes) // ring full: the consumer isn't keeping up
+          droppedFrames_.fetch_add((bytes - wrote) / bpf, std::memory_order_relaxed);
       }
       capture_->ReleaseBuffer(frames);
     }
+  };
+
+  // Report input loss at most once every few seconds, and only when it changes.
+  uint64_t lastDisc = 0, lastDropped = 0;
+  ULONGLONG lastReport = GetTickCount64();
+  auto report = [&]() {
+    if (GetTickCount64() - lastReport < 5000)
+      return;
+    lastReport = GetTickCount64();
+    const uint64_t d = Discontinuities(), f = DroppedFrames();
+    if (d == lastDisc && f == lastDropped)
+      return;
+    std::fprintf(stderr, "[WasapiCapture] input loss: %llu gap(s) from WASAPI, %llu frame(s) "
+                         "dropped into a full ring\n",
+                 static_cast<unsigned long long>(d - lastDisc),
+                 static_cast<unsigned long long>(f - lastDropped));
+    lastDisc = d;
+    lastDropped = f;
   };
 
   if (loopback_)
@@ -122,6 +155,7 @@ void WasapiCapture::ThreadProc()
       if (WaitForSingleObject(stopEvent_, 5) == WAIT_OBJECT_0) // ~5 ms poll
         break;
       drain();
+      report();
     }
   }
   else
@@ -133,6 +167,7 @@ void WasapiCapture::ThreadProc()
       if (w == WAIT_OBJECT_0 + 1) // stop
         break;
       drain();
+      report();
     }
   }
 

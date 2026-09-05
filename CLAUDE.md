@@ -103,6 +103,20 @@ the consumer: after any starvation it emits silence until the ring holds the ful
 are logged as `input starved N time(s)`. Don't "optimize" the gate away -- one packet is not
 enough to restart on.
 
+**Capture buffer (don't shrink it):** a loopback stream can't be event-driven, so it's polled.
+If a poll lands later than the endpoint buffer is long, WASAPI has *already discarded* the
+overrun -- that audio is gone and the ring can never make it up, so it shows up downstream as
+endless starvation and dropouts. The buffer was 20 ms; it's now **200 ms**, which is headroom,
+not latency (we drain it fully every 5 ms poll, so it normally holds ~5-10 ms). Measured on the
+live rig: 14 starvations per 30 s before, **0** after. `WasapiCapture` counts both loss paths
+(`DATA_DISCONTINUITY` gaps vs. frames dropped into a full ring) and logs `input loss: ...`, so
+the log says which side is losing audio -- check it before tuning anything else.
+
+**Corollary -- `safe` is not the knob for dropouts.** Raising the cushion only makes a real
+input leak take longer to surface (a deployed conf had drifted to `safe=2304` for exactly this
+reason). With the buffer fixed, every value from 512 up measured clean, including under full
+CPU load. Default stays 1536.
+
 **Surround upmix:** `SpdifEncoder` runs an FFmpeg `surround` libavfilter graph (abuffer → surround →
 aformat → abuffersink) for <=2ch input when `upmix=surround`, accumulating output in an `AVAudioFifo`
 and priming with silence (FFT latency) so the realtime consumer doesn't starve. Needs the `avfilter`

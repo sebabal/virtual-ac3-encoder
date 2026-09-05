@@ -12,6 +12,7 @@
 #include <mmdeviceapi.h>
 
 #include <atomic>
+#include <cstdint>
 #include <thread>
 
 struct CaptureFormat
@@ -44,6 +45,13 @@ public:
 
   const CaptureFormat& Format() const { return fmt_; }
 
+  // Input-loss diagnostics (see the counters' use in ThreadProc). Both are cumulative.
+  //  - Discontinuities: WASAPI told us the stream had a gap, i.e. it dropped captured audio
+  //    because we didn't read the endpoint buffer in time.
+  //  - DroppedFrames: our own ring was full, so the consumer isn't keeping up.
+  uint64_t Discontinuities() const { return discontinuities_.load(std::memory_order_relaxed); }
+  uint64_t DroppedFrames() const { return droppedFrames_.load(std::memory_order_relaxed); }
+
 private:
   void ThreadProc();
 
@@ -57,4 +65,7 @@ private:
   HANDLE                    stopEvent_ = nullptr;
   std::thread               thread_;
   std::atomic_bool          running_{false};
+
+  std::atomic<uint64_t>     discontinuities_{0};
+  std::atomic<uint64_t>     droppedFrames_{0};
 };
