@@ -94,6 +94,15 @@ and `WasapiPassthrough` applies it via `Gain.h`'s `ApplyGainRamp` to each 1536-f
 before encoding — ramped across the packet so slider moves fade instead of clicking. dB (not
 the scalar) is used so the attenuation matches Windows' own taper; gain is clamped to <= 1.
 
+**Refill after starvation (crackle fix):** while no app holds a stream on the virtual cable,
+WASAPI loopback delivers *nothing*, so the ring drains to empty. Resuming playback the moment
+one packet is available makes the fill level hover at that line, so the output alternates real
+audio and AC3 silence -- audible as **crackle at the start of every sound**. `Prebuffer.h` gates
+the consumer: after any starvation it emits silence until the ring holds the full cushion
+(`burstsPerCycle * 1536 + safe` frames, i.e. exactly the drift-trim target) again. Starvations
+are logged as `input starved N time(s)`. Don't "optimize" the gate away -- one packet is not
+enough to restart on.
+
 **Surround upmix:** `SpdifEncoder` runs an FFmpeg `surround` libavfilter graph (abuffer → surround →
 aformat → abuffersink) for <=2ch input when `upmix=surround`, accumulating output in an `AVAudioFifo`
 and priming with silence (FFT latency) so the realtime consumer doesn't starve. Needs the `avfilter`

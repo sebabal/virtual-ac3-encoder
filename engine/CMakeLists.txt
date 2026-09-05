@@ -47,6 +47,7 @@ add_library(ac3core STATIC
   src/SpdifEncoder.h
   src/RingBuffer.h
   src/Gain.h
+  src/Prebuffer.h
 )
 target_include_directories(ac3core PUBLIC src)
 target_link_libraries(ac3core PUBLIC ffmpeg)
@@ -105,6 +106,7 @@ add_executable(unit_tests
   test/test_encoder.cpp
   test/test_upmix.cpp
   test/test_gain.cpp
+  test/test_prebuffer.cpp
 )
 target_include_directories(unit_tests PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/../third_party/doctest"

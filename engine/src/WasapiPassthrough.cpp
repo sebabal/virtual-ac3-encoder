@@ -135,6 +135,13 @@ bool WasapiPassthrough::Init(IMMDevice* dev, RingBuffer* ring, const CaptureForm
   staging_.resize(pktBytes);
   silence_.assign(pktBytes, 0);
   burst_.resize(kBurstBytes);
+
+  // Refill cushion == the drift-trim target, so a refill lands exactly where the trim wants
+  // the latency to sit and isn't immediately discarded again.
+  const size_t primeBytes =
+      static_cast<size_t>(burstsPerCycle_ * framesPerPacket_ + params_.safeFrames) *
+      capBytesPerFrame_;
+  gate_.Reset(pktBytes, primeBytes);
   return true;
 }
 
@@ -239,7 +246,7 @@ void WasapiPassthrough::EncodeIntoBuffer(BYTE* out)
   for (int b = 0; b < burstsPerCycle_; ++b)
   {
     const uint8_t* in;
-    if (ring_->BytesAvailable() >= pktBytes)
+    if (gate_.Take(ring_->BytesAvailable()))
     {
       ring_->Read(staging_.data(), pktBytes);
       if (params_.volume)
@@ -256,7 +263,7 @@ void WasapiPassthrough::EncodeIntoBuffer(BYTE* out)
     }
     else
     {
-      in = silence_.data(); // underrun: emit AC3 silence, leave the ring to refill
+      in = silence_.data(); // refilling: emit AC3 silence until the cushion is back
       if (params_.volume)
         lastGain_ = params_.volume->Gain(); // nothing to fade; resume from wherever it is now
     }
@@ -283,6 +290,7 @@ bool WasapiPassthrough::Start()
   ResetEvent(stopEvent_);
   cycle_ = 0;
   minAvail_ = 0xFFFFFFFFu;
+  gate_.Rearm(); // the ring starts empty: prime before playing anything
 
   // Pre-fill the first buffer (primes the encoder and avoids an initial underrun) before Start.
   BYTE* out = nullptr;
@@ -339,6 +347,15 @@ void WasapiPassthrough::ThreadProc()
         ring_->Discard(static_cast<size_t>(trim) * capBytesPerFrame_);
       }
       minAvail_ = 0xFFFFFFFFu;
+
+      const uint64_t starved = gate_.Underruns();
+      if (starved != loggedUnderruns_)
+      {
+        std::fprintf(stderr, "[WasapiPassthrough] input starved %llu time(s); refilling to "
+                             "%u frames\n", static_cast<unsigned long long>(starved - loggedUnderruns_),
+                     desired);
+        loggedUnderruns_ = starved;
+      }
     }
 
     BYTE* out = nullptr;
